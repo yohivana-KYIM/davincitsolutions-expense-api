@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken"; // Assurez-vous d'importer jwt si nécessaire
 
 import User from "../models/userModel.js";
 import OTP from "../models/otpModel.js";
@@ -23,24 +22,24 @@ import sendOTPemail from "../utils/OTPs/sendOTPemail.js";
 export const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
 
-  // Check if email already exists
   const emailExists = await User.findOne({ email });
   if (emailExists) {
-    return res.status(400).json({ error: "Email is already registered. Please login instead!" });
+    return res
+      .status(400)
+      .json({ error: "Email is already Registered. Please login instead!" });
   }
 
-  // Check if username already exists
   const userNameExists = await User.findOne({ username });
   if (userNameExists) {
     return res.status(400).json({ error: "Username is already taken!" });
   }
 
-  // Hash password and save new user
   const hashedPassword = await generateHash(password);
+
   const newUser = new User({ username, email, password: hashedPassword });
+
   await newUser.save();
 
-  // Generate cookie and respond
   await generateCookie(res, newUser._id);
   res.status(200).json({
     message: "User registered successfully. Please verify your email!",
@@ -57,13 +56,14 @@ export const registerUser = asyncHandler(async (req, res) => {
 export const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Find user by email
   const existingUser = await User.findOne({ email });
+
   if (!existingUser) {
-    return res.status(404).json({ error: "Email is not registered. Please register!" });
+    return res.status(404).json({
+      error: "Email is not registered. Please register!",
+    });
   }
 
-  // Check if email is verified
   if (!existingUser.verified) {
     return res.status(401).json({
       user: {
@@ -72,17 +72,16 @@ export const loginUser = asyncHandler(async (req, res) => {
         email: existingUser.email,
         verified: existingUser.verified,
       },
-      error: "Email is not verified. Please verify your email via OTP to proceed.",
+      error:
+        "Email is not verified. Please verify your email via otp to proceed.",
     });
   }
 
-  // Check password validity
   const isPasswordValid = await bcrypt.compare(password, existingUser.password);
   if (!isPasswordValid) {
     return res.status(401).json({ error: "Invalid user credentials!" });
   }
 
-  // Generate cookie and respond
   await generateCookie(res, existingUser._id);
   return res.status(200).json({
     message: "Logged In Successfully!",
@@ -100,13 +99,16 @@ export const logoutCurrentUser = asyncHandler(async (req, res) => {
   const token = req.cookies.session;
   if (token) {
     res.clearCookie("session");
+
     return res.status(200).json({ message: "Logged Out Successfully!" });
   } else {
-    return res.status(401).json({ error: "You must be authenticated to access this resource!" });
+    return res.status(401).json({
+      error: "You must be authenticated to access this resource!",
+    });
   }
 });
 
-// Controller function to get current user profile details
+// Controller function to get current user profile details.
 export const getCurrentUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
@@ -136,22 +138,25 @@ export const updateCurrentUserProfile = asyncHandler(async (req, res) => {
   const { username, email } = req.body;
 
   if (!username && !email) {
-    return res.status(400).json({ error: "At least one field is required for update!" });
+    return res.status(400).json({
+      error: "At least one field is required for update!",
+    });
   }
 
   if (username === user.username && email === user.email) {
     return res.status(400).json({ error: "No changes detected!" });
   }
 
-  // Check for email uniqueness
   if (email && email !== user.email) {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: "Email is already in use. Please choose a different email address!" });
+      return res.status(400).json({
+        error:
+          "Email is already in use. Please choose a different email address!",
+      });
     }
   }
 
-  // Validate and update fields
   if (username) {
     const error = validateUsernameLength(username);
     if (error) {
@@ -191,16 +196,18 @@ export const resetPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
   if (!oldPassword || !newPassword) {
-    return res.status(400).json({ error: "Both fields are required for update!" });
+    return res.status(400).json({
+      error: "Both fields are required for update!",
+    });
   }
-  
   const error = await validatePasswordLength(newPassword);
   if (error) {
     return res.status(400).json({ error: error });
   }
-
   if (oldPassword === newPassword) {
-    return res.status(400).json({ error: "New password cannot be the same as old!" });
+    return res
+      .status(400)
+      .json({ error: "New password cannot be same as old!" });
   }
 
   const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
@@ -208,9 +215,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     return res.status(401).json({ error: "Invalid old password!" });
   }
 
-  user.password = await generateHash(newPassword);
-  await user.save();
-
+  await user.updateOne({ password: await generateHash(newPassword) });
   res.status(200).json({ message: "Password updated successfully!" });
 });
 
@@ -224,11 +229,14 @@ export const sendOTP = asyncHandler(async (req, res) => {
   }
 
   const userID = existingUser._id;
+
   const cooldownDuration = 60 * 1000; // 1 minute in milliseconds
   const lastResendTime = await getLastResendTime(userID);
 
   if (lastResendTime && Date.now() - lastResendTime < cooldownDuration) {
-    return res.status(429).json({ error: "Please wait for at least 1 minute before requesting another OTP." });
+    return res.status(429).json({
+      error: "Please wait for atleast 1 minute before requesting another OTP.",
+    });
   }
 
   await OTP.deleteMany({ userID });
@@ -249,10 +257,12 @@ export const verifyOTP = asyncHandler(async (req, res) => {
   }
 
   const userID = existingUser._id;
+
   const otpRecord = await OTP.findOne({ userID }).sort({ expiresAt: -1 });
-  
   if (!otpRecord) {
-    return res.status(400).json({ error: "No valid OTP found. Please request a new OTP." });
+    return res
+      .status(400)
+      .json({ error: "No valid OTP found. Please request a new OTP." });
   }
 
   if (otpRecord.expiresAt && otpRecord.expiresAt < Date.now()) {
@@ -262,7 +272,9 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
   const validOTP = await bcrypt.compare(otp, otpRecord.otp);
   if (!validOTP) {
-    return res.status(400).json({ error: "Invalid OTP. Please check your inbox!" });
+    return res
+      .status(400)
+      .json({ error: "Invalid OTP. Please check your inbox!" });
   }
 
   await User.updateOne({ _id: userID }, { verified: true });
