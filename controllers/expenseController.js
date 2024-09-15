@@ -1,5 +1,6 @@
 import Expense from "../models/expenseModel.js";
 import Income from "../models/incomeModel.js";
+import User from "../models/userModel.js";
 import asyncHandler from "../middlewares/asyncHandler.js";
 import {
   validateTitleLength,
@@ -9,30 +10,13 @@ import {
   validateDate,
   validatePaginationParams,
 } from "../utils/validations.js";
+import { calculateTotalBalance, checkAndSendAlerts, calculateExpensePercentage } from "../helpers/balanceHelper.js";
 
-// Helper function to calculate total balance
-const calculateTotalBalance = async (userId) => {
-  const totalIncome = await Income.aggregate([
-    { $match: { user: userId } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
-
-  const totalExpense = await Expense.aggregate([
-    { $match: { user: userId } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
-
-  const incomeTotal = totalIncome.length > 0 ? totalIncome[0].total : 0;
-  const expenseTotal = totalExpense.length > 0 ? totalExpense[0].total : 0;
-
-  return incomeTotal - expenseTotal;
-};
-
-// Controller function to add new expense
 export const addExpense = asyncHandler(async (req, res) => {
   const { title, amount, category, description, date } = req.body;
+  const userId = req.user._id;
 
-  // Validate inputs
+  // Validation des entrées
   const titleError = validateTitleLength(title);
   const descriptionError = validateDescriptionLength(description);
   const categoryError = validateExpenseCategory(category);
@@ -45,20 +29,14 @@ export const addExpense = asyncHandler(async (req, res) => {
   if (amountError) return res.status(400).json({ error: amountError });
   if (dateError) return res.status(400).json({ error: dateError });
 
-  // Calculate current balance
-  const currentBalance = await calculateTotalBalance(req.user._id);
-
-  // Check if balance is sufficient
-  if (currentBalance <= 0) {
-    return res.status(400).json({ error: "Impossible d'ajouter des dépenses. Le solde est insuffisant." });
-  }
+  const currentBalance = await calculateTotalBalance(userId);
 
   if (amount > currentBalance) {
     return res.status(400).json({ error: "Le montant de la dépense dépasse le solde disponible." });
   }
 
   const newExpense = new Expense({
-    user: req.user._id,
+    user: userId,
     title,
     amount,
     category,
@@ -67,21 +45,28 @@ export const addExpense = asyncHandler(async (req, res) => {
   });
 
   await newExpense.save();
+  
+  const updatedBalance = await calculateTotalBalance(userId);
+  const user = await User.findById(userId);
+  if (user) {
+    await checkAndSendAlerts(user, updatedBalance);
+  } else {
+    console.error(`Utilisateur avec l'ID ${userId} non trouvé.`);
+  }
 
   return res.status(201).json({ message: "Dépense ajoutée avec succès.", expense: newExpense });
 });
 
-// Controller function to update an expense
 export const updateExpense = asyncHandler(async (req, res) => {
   const expense = await Expense.findById(req.params.id);
 
   if (!expense) {
-    return res.status(404).json({ error: "Dépense ajoutée avec succès!" });
+    return res.status(404).json({ error: "Dépense non trouvée" });
   }
 
   const { title, amount, category, description, date } = req.body;
 
-  // Validate inputs
+  // Validation des entrées
   const titleError = title ? validateTitleLength(title) : null;
   const descriptionError = description ? validateDescriptionLength(description) : null;
   const categoryError = category ? validateExpenseCategory(category) : null;
@@ -94,33 +79,36 @@ export const updateExpense = asyncHandler(async (req, res) => {
   if (amountError) return res.status(400).json({ error: amountError });
   if (dateError) return res.status(400).json({ error: dateError });
 
-  // Calculate current balance
   const currentBalance = await calculateTotalBalance(req.user._id);
 
-  // If amount is being modified, check if the new amount is valid
   if (amount && amount !== expense.amount) {
     const amountDifference = amount - expense.amount;
 
     if (amountDifference > currentBalance) {
-      return res.status(400).json({ error: "Le montant des nouvelles dépenses dépasse les disponibilités ." });
+      return res.status(400).json({ error: "Le montant des nouvelles dépenses dépasse les disponibilités." });
     }
 
-    // Update the amount in the expense
     expense.amount = amount;
   }
 
-  // Validate and update other fields if provided
   if (title) expense.title = title;
   if (category) expense.category = category;
   if (description) expense.description = description;
   if (date) expense.date = date;
 
   const updatedExpense = await expense.save();
+  
+  const updatedBalance = await calculateTotalBalance(req.user._id);
+  const user = await User.findById(req.user._id);
+  if (user) {
+    await checkAndSendAlerts(user, updatedBalance);
+  } else {
+    console.error(`Utilisateur avec l'ID ${req.user._id} non trouvé.`);
+  }
 
   return res.status(200).json({ message: "Dépense mise à jour avec succès!", expense: updatedExpense });
 });
 
-// Controller function to delete an expense
 export const deleteExpense = asyncHandler(async (req, res) => {
   const expense = await Expense.findOneAndDelete({
     _id: req.params.id,
@@ -131,15 +119,20 @@ export const deleteExpense = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "Aucune dépense trouvée!" });
   }
 
-  return res.status(200).json({ message: "EDépense supprimée avec succès !" });
+  // Vérifier les alertes après la suppression d'une dépense
+  const user = await User.findById(req.user._id);
+  if (user) {
+    const updatedBalance = await calculateTotalBalance(req.user._id);
+    await checkAndSendAlerts(user, updatedBalance);
+  }
+
+  return res.status(200).json({ message: "Dépense supprimée avec succès!" });
 });
 
-// Controller function to get all expenses with pagination
 export const getExpenses = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 10;
 
-  // Validate pagination parameters
   const paginationError = validatePaginationParams(page, pageSize);
   if (paginationError) {
     return res.status(400).json({ error: paginationError });
@@ -159,16 +152,18 @@ export const getExpenses = asyncHandler(async (req, res) => {
   const totalCount = await Expense.countDocuments({ user: req.user._id });
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const totalExpenses = await Expense.find({ user: req.user._id });
-  const totalExpense = totalExpenses.reduce(
-    (acc, expense) => acc + expense.amount,
-    0
-  );
+  const totalExpense = await Expense.aggregate([
+    { $match: { user: req.user._id } },
+    { $group: { _id: null, total: { $sum: "$amount" } } }
+  ]);
+
+  const expensePercentage = await calculateExpensePercentage(req.user._id);
 
   return res.status(200).json({
     message: "Toutes les dépenses récupérées avec succès!",
     expenses,
-    totalExpense,
+    totalExpense: totalExpense.length > 0 ? totalExpense[0].total : 0,
+    expensePercentage,
     pagination: {
       currentPage: page,
       totalPages,
@@ -178,12 +173,11 @@ export const getExpenses = asyncHandler(async (req, res) => {
   });
 });
 
-// Controller function to get all expenses without pagination
 export const getAllExpenses = asyncHandler(async (req, res) => {
   const expenses = await Expense.find({ user: req.user._id });
 
   if (!expenses || expenses.length === 0) {
-    return res.status(404).json({ message: "Aucune dépense trouvée !" });
+    return res.status(404).json({ message: "Aucune dépense trouvée!" });
   }
 
   const totalExpense = expenses.reduce(
@@ -191,9 +185,12 @@ export const getAllExpenses = asyncHandler(async (req, res) => {
     0
   );
 
+  const expensePercentage = await calculateExpensePercentage(req.user._id);
+
   return res.status(200).json({
-    message: "Toutes les dépenses récupérées avec succès !",
+    message: "Toutes les dépenses récupérées avec succès!",
     expenses,
     totalExpense,
+    expensePercentage,
   });
 });
