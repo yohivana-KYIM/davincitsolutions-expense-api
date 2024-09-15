@@ -20,6 +20,24 @@ export const calculateTotalBalance = async (userId) => {
   return incomeTotal - expenseTotal;
 };
 
+const createAlertEmailBody = (username, threshold) => {
+  return `Bonjour ${username},
+
+Vous avez dépensé <b>${threshold}%</b> de vos revenus. Nous espérons que vous profitez pleinement de notre application web Expense Tracker de Da Vinci IT Solutions.
+
+Nous tenons à vous informer que vous avez déjà dépensé <${threshold}%</b> de votre revenu ce mois-ci. À ce rythme, il est possible que vous ne parveniez pas à finir le mois dans les meilleures conditions financières.
+
+Nous vous encourageons à suivre de près vos dépenses et à ajuster votre budget si nécessaire.
+
+Si vous avez des questions ou besoin d'aide pour mieux gérer vos finances, n'hésitez pas à nous contacter.
+
+Cordialement,
+L'équipe Expense Tracker
+Da Vinci IT Solutions`;
+};
+
+
+
 export const checkAndSendAlerts = async (user, currentBalance) => {
   const totalIncome = await Income.aggregate([
     { $match: { user: user._id } },
@@ -54,11 +72,12 @@ export const checkAndSendAlerts = async (user, currentBalance) => {
     if (expensePercentage >= alert.threshold) {
       if (!user.alertThresholds[alert.key]) {
         console.log(`Seuil d'alerte ${alert.threshold}% atteint pour l'utilisateur ${user.email}. Envoi d'un e-mail...`);
-        const result = await sendAlertEmail(
-          user.email,
-          `Alerte Dépenses ${alert.threshold}%`,
-          `Vous avez dépensé ${alert.threshold}% de vos revenus.`
-        );
+        
+        const emailSubject = `Alerte Dépenses ${alert.threshold}%`;
+        const emailBody = createAlertEmailBody(user.username, alert.threshold);
+
+        const result = await sendAlertEmail(user.email, emailSubject, emailBody);
+        
         if (result.success) {
           user.alertThresholds[alert.key] = true;
           console.log(`Alerte ${alert.threshold}% envoyée avec succès à ${user.email}.`);

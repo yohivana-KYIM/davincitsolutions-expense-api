@@ -24,8 +24,8 @@ app.use(cookieParser());
 // Configuration de CORS
 app.use(
   cors({
-    origin: "https://expense-davincit.vercel.app",   
-    //origin: "http://localhost:5173", // Ajuster en fonction des besoins en production
+    //origin: "https://expense-davincit.vercel.app",   
+    origin: "http://localhost:5173", // Ajuster en fonction des besoins en production
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
