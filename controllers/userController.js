@@ -26,12 +26,12 @@ export const registerUser = asyncHandler(async (req, res) => {
   if (emailExists) {
     return res
       .status(400)
-      .json({ error: "Email is already Registered. Please login instead!" });
+      .json({ error: "L'email est déjà enregistré. Veuillez vous connecter !" });
   }
 
   const userNameExists = await User.findOne({ username });
   if (userNameExists) {
-    return res.status(400).json({ error: "Username is already taken!" });
+    return res.status(400).json({ error: "Le nom d'utilisateur est déjà pris !" });
   }
 
   const hashedPassword = await generateHash(password);
@@ -42,7 +42,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
   await generateCookie(res, newUser._id);
   res.status(200).json({
-    message: "User registered successfully. Please verify your email!",
+    message: "Utilisateur enregistré avec succès. Veuillez vérifier votre email !",
     user: {
       _id: newUser._id,
       username: newUser.username,
@@ -60,7 +60,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   if (!existingUser) {
     return res.status(404).json({
-      error: "Email is not registered. Please register!",
+      error: "L'email n'est pas enregistré. Veuillez vous inscrire !",
     });
   }
 
@@ -73,18 +73,18 @@ export const loginUser = asyncHandler(async (req, res) => {
         verified: existingUser.verified,
       },
       error:
-        "Email is not verified. Please verify your email via otp to proceed.",
+        "L'email n'est pas vérifié. Veuillez vérifier votre email via OTP pour continuer.",
     });
   }
 
   const isPasswordValid = await bcrypt.compare(password, existingUser.password);
   if (!isPasswordValid) {
-    return res.status(401).json({ error: "Invalid user credentials!" });
+    return res.status(401).json({ error: "Identifiants utilisateur invalides !" });
   }
 
   await generateCookie(res, existingUser._id);
   return res.status(200).json({
-    message: "Logged In Successfully!",
+    message: "Connexion réussie !",
     user: {
       _id: existingUser._id,
       username: existingUser.username,
@@ -100,10 +100,10 @@ export const logoutCurrentUser = asyncHandler(async (req, res) => {
   if (token) {
     res.clearCookie("session");
 
-    return res.status(200).json({ message: "Logged Out Successfully!" });
+    return res.status(200).json({ message: "Déconnexion réussie !" });
   } else {
     return res.status(401).json({
-      error: "You must be authenticated to access this resource!",
+      error: "Vous devez être authentifié pour accéder à cette ressource !",
     });
   }
 });
@@ -114,7 +114,7 @@ export const getCurrentUserProfile = asyncHandler(async (req, res) => {
 
   if (user) {
     return res.status(200).json({
-      message: "User details retrieved successfully!",
+      message: "Détails de l'utilisateur récupérés avec succès !",
       user: {
         _id: user._id,
         username: user.username,
@@ -123,7 +123,7 @@ export const getCurrentUserProfile = asyncHandler(async (req, res) => {
       },
     });
   } else {
-    return res.status(404).json({ error: "User Not Found!" });
+    return res.status(404).json({ error: "Utilisateur non trouvé !" });
   }
 });
 
@@ -132,19 +132,19 @@ export const updateCurrentUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (!user) {
-    return res.status(404).json({ error: "User not found!" });
+    return res.status(404).json({ error: "Utilisateur non trouvé !" });
   }
 
   const { username, email } = req.body;
 
   if (!username && !email) {
     return res.status(400).json({
-      error: "At least one field is required for update!",
+      error: "Au moins un champ est requis pour la mise à jour !",
     });
   }
 
   if (username === user.username && email === user.email) {
-    return res.status(400).json({ error: "No changes detected!" });
+    return res.status(400).json({ error: "Aucun changement détecté !" });
   }
 
   if (email && email !== user.email) {
@@ -152,7 +152,7 @@ export const updateCurrentUserProfile = asyncHandler(async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         error:
-          "Email is already in use. Please choose a different email address!",
+          "L'email est déjà utilisé. Veuillez choisir une autre adresse e-mail !",
       });
     }
   }
@@ -175,7 +175,7 @@ export const updateCurrentUserProfile = asyncHandler(async (req, res) => {
   const updatedUser = await user.save();
 
   return res.status(200).json({
-    message: "Profile updated Successfully!",
+    message: "Profil mis à jour avec succès !",
     user: {
       _id: updatedUser._id,
       username: updatedUser.username,
@@ -190,14 +190,14 @@ export const resetPassword = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
 
   if (!user) {
-    return res.status(404).json({ error: "User not found!" });
+    return res.status(404).json({ error: "Utilisateur non trouvé !" });
   }
 
   const { oldPassword, newPassword } = req.body;
 
   if (!oldPassword || !newPassword) {
     return res.status(400).json({
-      error: "Both fields are required for update!",
+      error: "Les deux champs sont requis pour la mise à jour !",
     });
   }
   const error = await validatePasswordLength(newPassword);
@@ -207,16 +207,16 @@ export const resetPassword = asyncHandler(async (req, res) => {
   if (oldPassword === newPassword) {
     return res
       .status(400)
-      .json({ error: "New password cannot be same as old!" });
+      .json({ error: "Le nouveau mot de passe ne peut pas être identique à l'ancien !" });
   }
 
   const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
   if (!isPasswordValid) {
-    return res.status(401).json({ error: "Invalid old password!" });
+    return res.status(401).json({ error: "Ancien mot de passe invalide !" });
   }
 
   await user.updateOne({ password: await generateHash(newPassword) });
-  res.status(200).json({ message: "Password updated successfully!" });
+  res.status(200).json({ message: "Mot de passe mis à jour avec succès !" });
 });
 
 // Controller function to send OTP
@@ -225,7 +225,7 @@ export const sendOTP = asyncHandler(async (req, res) => {
 
   const existingUser = await User.findOne({ email });
   if (!existingUser) {
-    return res.status(404).json({ error: "Email is not registered!" });
+    return res.status(404).json({ error: "L'email n'est pas enregistré !" });
   }
 
   const userID = existingUser._id;
@@ -235,7 +235,7 @@ export const sendOTP = asyncHandler(async (req, res) => {
 
   if (lastResendTime && Date.now() - lastResendTime < cooldownDuration) {
     return res.status(429).json({
-      error: "Please wait for atleast 1 minute before requesting another OTP.",
+      error: "Veuillez attendre au moins 1 minute avant de demander un autre OTP.",
     });
   }
 
@@ -250,10 +250,10 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
   const existingUser = await User.findOne({ email });
   if (!existingUser) {
-    return res.status(404).json({ error: "User not found!" });
+    return res.status(404).json({ error: "Utilisateur non trouvé !" });
   }
   if (existingUser.verified) {
-    return res.status(400).json({ error: "Email is already verified!" });
+    return res.status(400).json({ error: "L'email est déjà vérifié !" });
   }
 
   const userID = existingUser._id;
@@ -262,33 +262,31 @@ export const verifyOTP = asyncHandler(async (req, res) => {
   if (!otpRecord) {
     return res
       .status(400)
-      .json({ error: "No valid OTP found. Please request a new OTP." });
+      .json({ error: "Aucun OTP valide trouvé. Veuillez demander un nouvel OTP." });
   }
 
   if (otpRecord.expiresAt && otpRecord.expiresAt < Date.now()) {
     await OTP.deleteMany({ userID });
-    return res.status(400).json({ error: "OTP has expired!" });
+    return res.status(400).json({ error: "L'OTP a expiré !" });
   }
 
   const validOTP = await bcrypt.compare(otp, otpRecord.otp);
   if (!validOTP) {
     return res
       .status(400)
-      .json({ error: "Invalid OTP. Please check your inbox!" });
+      .json({ error: "OTP invalide. Veuillez vérifier votre boîte de réception !" });
   }
 
   await User.updateOne({ _id: userID }, { verified: true });
   await OTP.deleteMany({ userID });
 
-  const updatedUser = await User.findById(userID);
-
-  res.status(200).json({
+  return res.status(200).json({
+    message: "Adresse e-mail vérifiée avec succès !",
     user: {
-      _id: updatedUser._id,
-      username: updatedUser.username,
-      email: updatedUser.email,
-      verified: updatedUser.verified,
+      _id: existingUser._id,
+      username: existingUser.username,
+      email: existingUser.email,
+      verified: true,
     },
-    message: "Email has been verified successfully!",
   });
 });

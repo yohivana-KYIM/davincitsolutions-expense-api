@@ -10,7 +10,7 @@ import {
   validatePaginationParams,
 } from "../utils/validations.js";
 
-// Controller function to add new income
+// Fonction du contrôleur pour ajouter un nouveau revenu
 export const addIncome = asyncHandler(async (req, res) => {
   const { title, amount, category, description, date } = req.body;
 
@@ -27,15 +27,15 @@ export const addIncome = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json({ message: "Income added successfully", income: newIncome });
+    .json({ message: "Revenu ajouté avec succès", income: newIncome });
 });
 
-// Controller function to update an income
+// Fonction du contrôleur pour mettre à jour un revenu
 export const updateIncome = asyncHandler(async (req, res) => {
   const income = await Income.findById(req.params.id);
 
   if (!income) {
-    return res.status(404).json({ error: "Income not found!" });
+    return res.status(404).json({ error: "Revenu non trouvé!" });
   }
 
   const { title, amount, category, description, date } = req.body;
@@ -43,7 +43,7 @@ export const updateIncome = asyncHandler(async (req, res) => {
   if (!title && !amount && !category && !description && !date) {
     return res
       .status(400)
-      .json({ error: "At least one field is required for update!" });
+      .json({ error: "Au moins un champ est requis pour la mise à jour!" });
   }
   if (
     title === income.title &&
@@ -52,7 +52,7 @@ export const updateIncome = asyncHandler(async (req, res) => {
     description === income.description &&
     date === income.date
   ) {
-    return res.status(400).json({ error: "No changes detected!" });
+    return res.status(400).json({ error: "Aucun changement détecté!" });
   }
 
   if (title) {
@@ -95,23 +95,23 @@ export const updateIncome = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json({ message: "Income updated successfully!", income: updatedIncome });
+    .json({ message: "Revenu mis à jour avec succès!", income: updatedIncome });
 });
 
-// Controller function to delete an income
+// Fonction du contrôleur pour supprimer un revenu
 export const deleteIncome = asyncHandler(async (req, res) => {
   const income = await Income.findOneAndDelete({
     _id: req.params.id,
     user: req.user._id,
   });
   if (!income) {
-    return res.status(404).json({ error: "Income not found!" });
+    return res.status(404).json({ error: "Revenu non trouvé!" });
   }
 
-  return res.status(200).json({ message: "Income deleted successfully!" });
+  return res.status(200).json({ message: "Revenu supprimé avec succès!" });
 });
 
-// Controller function to get all incomes
+// Fonction du contrôleur pour obtenir tous les revenus
 export const getIncomes = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 10;
@@ -128,7 +128,7 @@ export const getIncomes = asyncHandler(async (req, res) => {
     .skip(skip)
     .limit(limit);
   if (!incomes || incomes.length === 0) {
-    return res.status(404).json({ message: "No incomes found!" });
+    return res.status(404).json({ message: "Aucun revenu trouvé!" });
   }
 
   const totalCount = await Income.countDocuments({ user: req.user._id });
@@ -142,7 +142,7 @@ export const getIncomes = asyncHandler(async (req, res) => {
   );
 
   return res.status(200).json({
-    message: "All incomes retrieved successfully!",
+    message: "Tous les revenus récupérés avec succès!",
     incomes,
     totalIncome,
     pagination: {
@@ -154,18 +154,18 @@ export const getIncomes = asyncHandler(async (req, res) => {
   });
 });
 
-// Controller function to get all incomes
+// Fonction du contrôleur pour obtenir tous les revenus
 export const getAllIncomes = asyncHandler(async (req, res) => {
   const incomes = await Income.find({ user: req.user._id });
 
   if (!incomes || incomes.length === 0) {
-    return res.status(404).json({ message: "No incomes found!" });
+    return res.status(404).json({ message: "Aucun revenu trouvé!" });
   }
 
   const totalIncome = incomes.reduce((acc, income) => acc + income.amount, 0);
 
   return res.status(200).json({
-    message: "All incomes retrieved successfully!",
+    message: "Tous les revenus récupérés avec succès!",
     incomes,
     totalIncome,
   });

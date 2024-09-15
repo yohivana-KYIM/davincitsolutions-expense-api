@@ -24,7 +24,7 @@ const sendOTPemail = asyncHandler(async ({ _id, email }, res) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: "Your Spend Smart Account Verification OTP",
+    subject: "Votre code de vérification OTP pour expense tracker Da Vinci IT Solutions",
     html: `
     <html>
       <head>
@@ -59,17 +59,17 @@ const sendOTPemail = asyncHandler(async ({ _id, email }, res) => {
       <body>
         <div class="container">
           <div class="header">
-            <h2>OTP Verification for Spend Smart Account</h2>
+            <h2>Vérification OTP pour votre compte expense tracker Da Vinci IT Solutions</h2>
           </div>
           <div class="content">
-            <p>Dear User,</p>
-            <p>Your OTP for verifying your Spend Smart account is: <strong>${otp}</strong></p>
-            <p>This OTP is valid for 1 minute. Please use it within this time period.</p>
-            <p>If you did not request this OTP, please ignore this email.</p>
-            <p>Thank you for choosing Spend Smart!</p>
+            <p>Chèr(e) utilisateur,</p>
+            <p>Votre code OTP pour vérifier votre compte expense tracker Da Vinci IT Solutions est : <strong>${otp}</strong></p>
+            <p>Ce code OTP est valable pendant 1 minute. Veuillez l'utiliser dans ce délai.</p>
+            <p>Si vous n'avez pas demandé ce code OTP, veuillez ignorer cet e-mail.</p>
+            <p>Merci d'avoir choisi expense tracker Da Vinci IT Solutions !</p>
           </div>
           <div class="footer">
-            <p>This is an automated email, please do not reply.</p>
+            <p>Ceci est un e-mail automatique, veuillez ne pas répondre.</p>
           </div>
         </div>
       </body>
@@ -90,7 +90,7 @@ const sendOTPemail = asyncHandler(async ({ _id, email }, res) => {
   await transporter.sendMail(mailOptions);
 
   return res.json({
-    message: "OTP sent successfully. Please check your inbox!",
+    message: "OTP envoyé avec succès. Veuillez vérifier votre boîte de réception !",
     data: {
       userID: _id,
       email,

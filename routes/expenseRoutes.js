@@ -37,3 +37,4 @@ router.get("/all", getAllExpenses);
 router.route("/:id").put(updateExpense).delete(deleteExpense);
 
 export default router;
+

@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-
+import balanceRoutes from './routes/balanceRoutes.js';
 import connectDB from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
 import incomeRoutes from './routes/incomeRoutes.js';
@@ -36,10 +36,11 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/incomes", authenticateUser, incomeRoutes);
 app.use("/api/v1/expenses", authenticateUser, expenseRoutes);
 
+
 // Middleware global pour la gestion des erreurs
 app.use((err, req, res, next) => {
   console.error('Error:', err.message);
-  res.status(500).json({ error: 'Something went wrong!' });
+  res.status(500).json({ error: "Quelque chose s'est mal passé!" });
 });
 
 // Démarrer le serveur
