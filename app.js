@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import balanceRoutes from './routes/balanceRoutes.js';
+
 import connectDB from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
 import incomeRoutes from './routes/incomeRoutes.js';
